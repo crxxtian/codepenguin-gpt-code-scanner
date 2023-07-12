@@ -1,140 +1,108 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import PySimpleGUI as sg
 import openai
-import threading
-from pygments import highlight
-from pygments.lexers import get_lexer_by_name
-from pygments.formatters import HtmlFormatter
-
-openai.api_key = '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'
 
 
 class SecurityScannerGUI:
-    def __init__(self, root):
-        self.root = root
-        root.title("Enterprise Code Security Scanner")
-        root.geometry("800x600")
+    def __init__(self):
+        sg.theme("DarkTeal10")
+        self.layout = [
+            [sg.Text("Enterprise Code Security Scanner", font=("Verdana", 20, "bold"))],
+            [sg.Text("Please enter the code you wish to scan or click 'Browse File' to select a file:")],
+            [sg.Multiline(size=(80, 10), key="-CODE-")],
+            [sg.Button("Browse File"), sg.Button("Scan Code"), sg.Button("Save Output"),
+             sg.Button("Save Remediation Report")],
+            [sg.Text("Scan Results:")],
+            [sg.Multiline(size=(80, 10), key="-RESULTS-", disabled=True)]
+        ]
+        self.window = sg.Window("Enterprise Code Security Scanner", self.layout, finalize=True)
+        self.openai_key = "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"  # Replace with your actual OpenAI API key
 
-        self.init_ui()
+    def run(self):
+        while True:
+            event, values = self.window.read()
+            if event == sg.WINDOW_CLOSED:
+                break
+            elif event == "Browse File":
+                self.browse_file()
+            elif event == "Scan Code":
+                self.scan_code(values["-CODE-"])
+            elif event == "Save Output":
+                self.save_output(values["-RESULTS-"])
+            elif event == "Save Remediation Report":
+                self.save_remediation_report(values["-CODE-"])
 
-        self.scan_results = ""
-        self.remediated_code = ""
-
-    def init_ui(self):
-        title_label = tk.Label(self.root, text="Enterprise Code Security Scanner", font=("Arial", 16, "bold"))
-        title_label.pack(pady=10)
-
-        instructions_label = tk.Label(self.root, text="Please enter the code you wish to scan or click 'Browse File' to select a file:")
-        instructions_label.pack()
-
-        code_frame = tk.Frame(self.root)
-        code_frame.pack(pady=10)
-
-        code_scrollbar = tk.Scrollbar(code_frame)
-        code_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.code_text = tk.Text(code_frame, height=10, width=50, wrap=tk.NONE, yscrollcommand=code_scrollbar.set)
-        self.code_text.pack(side=tk.LEFT)
-
-        code_scrollbar.config(command=self.code_text.yview)
-
-        browse_button = tk.Button(self.root, text="Browse File", command=self.browse_file)
-        browse_button.pack(pady=10)
-
-        scan_button = tk.Button(self.root, text="Scan Code", command=self.scan_code)
-        scan_button.pack()
-
-        result_frame = tk.Frame(self.root)
-        result_frame.pack(pady=10)
-
-        vulnerabilities_label = tk.Label(result_frame, text="Potential Vulnerabilities:")
-        vulnerabilities_label.pack(side=tk.LEFT)
-
-        remediation_label = tk.Label(result_frame, text="Remediated Code:")
-        remediation_label.pack(side=tk.LEFT, padx=10)
-
-        vulnerabilities_scrollbar = tk.Scrollbar(self.root)
-        vulnerabilities_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.vulnerabilities_text = tk.Text(self.root, height=20, width=40, wrap=tk.NONE, yscrollcommand=vulnerabilities_scrollbar.set)
-        self.vulnerabilities_text.pack(side=tk.LEFT, padx=10)
-        vulnerabilities_scrollbar.config(command=self.vulnerabilities_text.yview)
-
-        remediation_scrollbar = tk.Scrollbar(self.root)
-        remediation_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.remediation_text = tk.Text(self.root, height=20, width=40, wrap=tk.NONE, yscrollcommand=remediation_scrollbar.set)
-        self.remediation_text.pack(side=tk.LEFT, padx=10)
-        remediation_scrollbar.config(command=self.remediation_text.yview)
-
-        save_button = tk.Button(self.root, text="Save Remediation", command=self.save_remediation)
-        save_button.pack(pady=10)
+        self.window.close()
 
     def browse_file(self):
-        file_path = filedialog.askopenfilename(title="Select File to Scan", filetypes=[("All Files", "*.*")])
+        file_path = sg.popup_get_file("Select File to Scan")
         if file_path:
             with open(file_path, "r") as file:
                 code = file.read()
-                self.code_text.delete("1.0", tk.END)
-                self.code_text.insert(tk.END, code)
+                self.window["-CODE-"].update(code)
 
-    def scan_code(self):
-        code = self.code_text.get("1.0", tk.END).strip()
-        if not code:
-            messagebox.showwarning("Scan Code", "No code provided. Please enter code or select a file to scan.")
+    def scan_code(self, code):
+        if not code.strip():
+            sg.popup_warning("Scan Code", "No code provided. Please enter code or select a file to scan.")
             return
 
-        self.vulnerabilities_text.delete("1.0", tk.END)
-        self.remediation_text.delete("1.0", tk.END)
+        # Perform scan using OpenAI API
+        vulnerabilities = self.perform_scan(code)
 
-        self.vulnerabilities_text.insert(tk.END, "Scanning code...\n")
-
-        threading.Thread(target=self.perform_scan, args=(code,)).start()
+        # Display the scan results
+        self.window["-RESULTS-"].update(vulnerabilities)
 
     def perform_scan(self, code):
-        lexer = get_lexer_by_name("cpp")
-        formatter = HtmlFormatter(style="colorful")
-        highlighted_code = highlight(code, lexer, formatter)
+        # Initialize OpenAI API client
+        openai.api_key = self.openai_key
+
+        # Call the OpenAI API to scan the code
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a comprehensive and driven Code Security Scanner familiar with all languages. My purpose is to detect and analyze potential security vulnerabilities in your code with precision and accuracy."},
-                {"role": "user", "content": "Comprehensively evaluate the provided code for security vulnerabilities and provide detailed specific remediations on any potential weaknesses or flaws you discover, or explain a different method of writing the code:\n" + code}
-            ]
+            messages=[{"role": "system", "content": "You are a code security scanner."},
+                      {"role": "user", "content": code}]
         )
-        vulnerabilities = response.choices[0].message['content']
 
-        self.update_result_text(self.vulnerabilities_text, "Potential vulnerabilities and remediations found within the code:")
-        self.append_syntax_highlighted_text(self.vulnerabilities_text, highlighted_code)
-        self.update_result_text(self.vulnerabilities_text, vulnerabilities)
+        # Extract the generated vulnerability report from the API response
+        vulnerabilities = response.choices[0].message.content.strip()
 
-        self.scan_results = vulnerabilities
-        self.remediated_code = code
+        return vulnerabilities
 
-    def update_result_text(self, text_widget, text):
-        text_widget.insert(tk.END, text + "\n")
-        text_widget.see(tk.END)
-
-    def append_syntax_highlighted_text(self, text_widget, text):
-        text_widget.insert(tk.END, text)
-        text_widget.see(tk.END)
-
-    def save_remediation(self):
-        if not self.remediated_code:
-            messagebox.showwarning("Save Remediation", "No remediation code available.")
+    def save_output(self, output):
+        if not output.strip():
+            sg.popup_warning("Save Output", "No output available.")
             return
 
-        file_path = filedialog.asksaveasfilename(title="Save Remediation", filetypes=[("Text Files", "*.txt")])
+        file_path = sg.popup_get_file("Save Output", save_as=True, file_types=(("Text Files", "*.txt"),))
         if file_path:
             try:
                 with open(file_path, "w") as file:
-                    file.write(self.remediated_code)
-                messagebox.showinfo("Save Remediation", "Remediation code saved successfully.")
+                    file.write(output)
+                sg.popup("Save Output", "Output saved successfully.")
             except Exception as e:
-                messagebox.showwarning("Save Remediation", f"Failed to save remediation code.\nError: {str(e)}")
+                sg.popup_warning("Save Output", f"Failed to save output.\nError: {str(e)}")
+
+    def save_remediation_report(self, code):
+        if not code.strip():
+            sg.popup_warning("Save Remediation Report",
+                             "No code provided. Please enter code or select a file to scan.")
+            return
+
+        vulnerabilities = self.perform_scan(code)
+        report = {
+            "code": code,
+            "vulnerabilities": vulnerabilities
+        }
+
+        file_path = sg.popup_get_file("Save Remediation Report", save_as=True, file_types=(("JSON Files", "*.json"),))
+        if file_path:
+            try:
+                with open(file_path, "w") as file:
+                    file.write(str(report))  # Convert report to string before writing
+                sg.popup("Save Remediation Report", "Remediation report saved successfully.")
+            except Exception as e:
+                sg.popup_warning("Save Remediation Report", f"Failed to save remediation report.\nError: {str(e)}")
 
 
 if __name__ == '__main__':
-    root = tk.Tk()
-    gui = SecurityScannerGUI(root)
-    root.mainloop()
+    gui = SecurityScannerGUI()
+    gui.run()
