@@ -1,9 +1,10 @@
-# CodePenguin: A ChatGPT-based Comprehensive Code Vulnerability analysis program, capable of understanding 71 programming languages and their vulnerabilities in every use case. 
+# CodePenguin: A ChatGPT-based Comprehensive Code Vulnerability analysis program
+# Capable of understanding 71 programming languages and their vulnerabilities in every use case. 
 Started on 7/11/2023
 Built using Python and  OpenAI API
 Must have your own API key that you set as an environment variable for this to work. 
-Can use the following models: "gpt-4", "gpt-4-0613", "gpt-4-32k", "gpt-4-32k-0613", "gpt-3.5-turbo", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"
-Ability to drag and drop 
+Can use the following models:
+"gpt-4", "gpt-4-0613", "gpt-4-32k", "gpt-4-32k-0613", "gpt-3.5-turbo", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"
 
 This is such a huge WIP and just something I have thrown together in 2 days! Hope to expand this project out immensely and eventually lead into a web app. Here are the current functionalities and possibilities it offers:
 
