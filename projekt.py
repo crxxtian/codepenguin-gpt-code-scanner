@@ -1,6 +1,7 @@
 import PySimpleGUI as sg
 import openai
 
+openai.api_key = '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'
 
 class SecurityScannerGUI:
     def __init__(self):
