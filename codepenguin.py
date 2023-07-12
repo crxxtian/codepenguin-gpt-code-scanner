@@ -31,9 +31,9 @@ class SecurityScannerGUI:
     def load_settings(self):
         # Default settings
         self.settings = {
-            "engine": "text-davinci-003",
+            "engine": "davinci",
             "temperature": 0.3,
-            "max_tokens": 500
+            "max_tokens": 100
         }
 
         # Load settings from file
@@ -117,33 +117,23 @@ class SecurityScannerGUI:
         2. Provide a detailed analysis of each vulnerability, including the type, severity, and potential impact.
         3. Recommend remediation steps to address each identified vulnerability.
         4. Ensure that the report is well-structured, organized, and easy to understand.
-        5. Pay attention to common security vulnerabilities such as:
-           - Injection attacks (SQL, command, etc.)
-           - Cross-Site Scripting (XSS)
-           - Cross-Site Request Forgery (CSRF)
-           - Authentication and authorization issues
-           - Information leakage
-           - Insecure direct object references
-           - Insecure deserialization
-           - Secure coding best practices (input validation, output encoding, etc.)
+        5. Pay attention and recognize common security vulnerabilities.
         6. Consider any specific security requirements or standards relevant to the code, such as OWASP Top 10 or specific compliance frameworks.
 
         Please provide a comprehensive vulnerability report for the given code.
         """.format(code=code)
 
         # Call the OpenAI API to scan the code
-        response = openai.Completion.create(
-            engine=self.settings["engine"],
-            prompt=prompt,
-            max_tokens=self.settings["max_tokens"],
-            n=1,
-            stop=None,
-            temperature=self.settings["temperature"],
-            top_p=1.0,
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a code security scanner."},
+                {"role": "user", "content": prompt}
+            ]
         )
 
         # Extract the vulnerability report from the API response
-        vulnerabilities = response.choices[0].text.strip()
+        vulnerabilities = response.choices[0].message.content.strip()
 
         # Update the last API call time
         self.last_api_call_time = time.time()
@@ -210,7 +200,7 @@ class SecurityScannerGUI:
         if file_path:
             try:
                 with open(file_path, "w") as file:
-                    file.write(str(report))  # Convert report to string before writing
+                    file.write(json.dumps(report))  # Write report as JSON string
                 sg.popup("Save Remediation Report", "Remediation report saved successfully.")
             except Exception as e:
                 sg.popup("Save Remediation Report", f"Failed to save remediation report.\nError: {str(e)}",
@@ -219,7 +209,7 @@ class SecurityScannerGUI:
     def show_settings(self):
         # Settings layout
         settings_layout = [
-            [sg.Text("Engine:"), sg.InputCombo(["gpt-4", "gpt-3.5-turbo", "text-davinci-003", "gpt-3.5-turbo-16k"], default_value=self.settings["engine"], key="-ENGINE-")],
+            [sg.Text("Engine:"), sg.InputCombo(["gpt-4", "gpt-4-0613", "gpt-4-32k", "gpt-4-32k-0613", "gpt-3.5-turbo", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"], default_value=self.settings["engine"], key="-ENGINE-")],
             [sg.Text("Temperature:"), sg.Input(self.settings["temperature"], key="-TEMPERATURE-")],
             [sg.Text("Max Tokens:"), sg.Input(self.settings["max_tokens"], key="-MAX_TOKENS-")],
             [sg.Button("Save"), sg.Button("Cancel")]
