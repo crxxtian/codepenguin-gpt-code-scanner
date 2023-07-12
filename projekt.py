@@ -1,7 +1,7 @@
+import os
 import PySimpleGUI as sg
 import openai
 
-openai.api_key = ''
 
 class SecurityScannerGUI:
     def __init__(self):
@@ -16,7 +16,7 @@ class SecurityScannerGUI:
             [sg.Multiline(size=(80, 10), key="-RESULTS-", disabled=True)]
         ]
         self.window = sg.Window("Enterprise Code Security Scanner", self.layout, finalize=True)
-        self.openai_key = "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"  # Replace with your actual OpenAI API key
+        self.openai_key = os.getenv("OPENAI_API_KEY")
 
     def run(self):
         while True:
@@ -43,7 +43,7 @@ class SecurityScannerGUI:
 
     def scan_code(self, code):
         if not code.strip():
-            sg.popup_warning("Scan Code", "No code provided. Please enter code or select a file to scan.")
+            sg.popup("Scan Code", "No code provided. Please enter code or select a file to scan.")
             return
 
         # Perform scan using OpenAI API
@@ -53,24 +53,60 @@ class SecurityScannerGUI:
         self.window["-RESULTS-"].update(vulnerabilities)
 
     def perform_scan(self, code):
+        if not self.openai_key:
+            sg.popup("API Key Missing", "Please set the OPENAI_API_KEY environment variable.")
+            return
+
         # Initialize OpenAI API client
         openai.api_key = self.openai_key
 
+        prompt = """
+        You are a comprehensive code security scanner. Scan the following code for vulnerabilities and provide a detailed report:
+
+        === CODE START ===
+        {code}
+        === CODE END ===
+
+        Instructions:
+        1. Identify and report any potential security vulnerabilities present in the code.
+        2. Provide a detailed analysis of each vulnerability, including the type, severity, and potential impact.
+        3. Recommend remediation steps to address each identified vulnerability.
+        4. Ensure that the report is well-structured, organized, and easy to understand.
+        5. Pay attention to common security vulnerabilities such as:
+           - Injection attacks (SQL, command, etc.)
+           - Cross-Site Scripting (XSS)
+           - Cross-Site Request Forgery (CSRF)
+           - Authentication and authorization issues
+           - Information leakage
+           - Insecure direct object references
+           - Insecure deserialization
+           - Secure coding best practices (input validation, output encoding, etc.)
+        6. Consider any specific security requirements or standards relevant to the code, such as OWASP Top 10 or specific compliance frameworks.
+
+        Please provide a comprehensive vulnerability report for the given code.
+        """.format(code=code)
+
         # Call the OpenAI API to scan the code
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": "You are a code security scanner."},
-                      {"role": "user", "content": code}]
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            max_tokens=500,
+            n=1,
+            stop=None,
+            temperature=0.3,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
         )
 
-        # Extract the generated vulnerability report from the API response
-        vulnerabilities = response.choices[0].message.content.strip()
+        # Extract the vulnerability report from the API response
+        vulnerabilities = response.choices[0].text.strip()
 
         return vulnerabilities
 
     def save_output(self, output):
         if not output.strip():
-            sg.popup_warning("Save Output", "No output available.")
+            sg.popup("Save Output", "No output available.")
             return
 
         file_path = sg.popup_get_file("Save Output", save_as=True, file_types=(("Text Files", "*.txt"),))
@@ -80,11 +116,11 @@ class SecurityScannerGUI:
                     file.write(output)
                 sg.popup("Save Output", "Output saved successfully.")
             except Exception as e:
-                sg.popup_warning("Save Output", f"Failed to save output.\nError: {str(e)}")
+                sg.popup("Save Output", f"Failed to save output.\nError: {str(e)}")
 
     def save_remediation_report(self, code):
         if not code.strip():
-            sg.popup_warning("Save Remediation Report",
+            sg.popup("Save Remediation Report",
                              "No code provided. Please enter code or select a file to scan.")
             return
 
@@ -101,7 +137,7 @@ class SecurityScannerGUI:
                     file.write(str(report))  # Convert report to string before writing
                 sg.popup("Save Remediation Report", "Remediation report saved successfully.")
             except Exception as e:
-                sg.popup_warning("Save Remediation Report", f"Failed to save remediation report.\nError: {str(e)}")
+                sg.popup("Save Remediation Report", f"Failed to save remediation report.\nError: {str(e)}")
 
 
 if __name__ == '__main__':
