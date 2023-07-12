@@ -4,7 +4,7 @@ from PyQt5.QtGui import QFont, QTextCharFormat, QTextCursor, QColor, QTextDocume
 import openai
 import threading
 
-openai.api_key = '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'
+openai.api_key = 'api-key'
 
 class SecurityScannerGUI(QMainWindow):
     def __init__(self):
